@@ -1,5 +1,6 @@
 
 import java.awt.BorderLayout;
+import java.awt.Label;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.print.PrinterException;
@@ -7,6 +8,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Vector;
 import javax.swing.JButton;
@@ -15,6 +19,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableModel;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
@@ -40,10 +45,10 @@ public class Directory extends javax.swing.JFrame {
     static JScrollPane scroll;
     // header is Vector contains table Column
     static Vector headers = new Vector(); 
-// Model is used to construct JTable
+    // Model is used to construct JTable
     static DefaultTableModel model = null; // data is Vector contains Data from Excel File 
     static Vector data = new Vector();
-  //  static JButton jbClick; static JFileChooser jChooser; 
+    //  static JButton jbClick; static JFileChooser jChooser; 
     static int tableWidth = 0; // set the tableWidth 
     static int tableHeight = 0; // set the tableHeight
 
@@ -248,9 +253,9 @@ public class Directory extends javax.swing.JFrame {
        // Return first sheet from the XLSX workbook 
        XSSFSheet mySheet = myWorkBook.getSheetAt(0); 
            // sortSheet(myWorkBook, mySheet);
-// Get iterator to all the rows in current sheet 
+    // Get iterator to all the rows in current sheet 
        Iterator<Row> rowIterator = mySheet.iterator(); 
-// Traversing over each row of XLSX file
+    // Traversing over each row of XLSX file
        Vector data = new Vector();
        int rowCount=0;
        while (rowIterator.hasNext()) { 
@@ -282,48 +287,39 @@ public class Directory extends javax.swing.JFrame {
             data.add(d);
             System.out.println(""); 
          }
-   // data.sort();
-    Vector headers = new Vector();
-    headers.add("Row No.");
-    headers.add("Serial No.");
-    headers.add("Name");
-    headers.add("Mobile No.");
-    headers.add("Place");
+   
+        Vector headers = new Vector();
+        headers.add("Row No.");
+        headers.add("Serial No.");
+        headers.add("Name");
+        headers.add("Mobile No.");
+        headers.add("Place");
     
-    JTable table = new JTable();
-    DefaultTableModel model = new DefaultTableModel(data,headers);
-    table.setModel(model);
-    table.setAutoCreateRowSorter(true);
-    model = new DefaultTableModel(data, headers);
-    table.setModel(model);
-    JScrollPane scroll = new JScrollPane(table);
-    JFrame f=new JFrame();
-    f.add(scroll,BorderLayout.CENTER);
-    JButton button = new JButton("Print");
-    ActionListener printAction = new ActionListener() {
-      public void actionPerformed(ActionEvent e) {
-        try {
-          table.print();
-        } catch (PrinterException pe) {
-          System.err.println("Error printing: " + pe.getMessage());
-        }
-      }
-    };
-    button.addActionListener(printAction);
-    f.add(button, BorderLayout.SOUTH);
-    f.setSize(500, 220);
-    f.setResizable(true);
-    f.setVisible(true);
-    
-    
-    
-    //Button back = new Button();
-    //back.setLabel("Back");
-    //back.setSize(30, 20);
-    
-      //table.add(back);
-    
-       
+        JTable table = new JTable();
+        DefaultTableModel model = new DefaultTableModel(data,headers);
+        table.setModel(model);
+        table.setAutoCreateRowSorter(true);
+        model = new DefaultTableModel(data, headers);
+        table.setModel(model);
+        JScrollPane scroll = new JScrollPane(table);
+        JFrame f=new JFrame();
+        f.add(scroll,BorderLayout.CENTER);
+        JButton button = new JButton("Print");
+        ActionListener printAction = new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    table.print();
+                } catch (PrinterException pe) {
+                    //System.err.println("Error printing: " + pe.getMessage());
+                    JOptionPane.showMessageDialog(Directory.this,pe.getMessage(),"Error",JOptionPane.ERROR_MESSAGE);
+                }   
+            }
+        };
+        button.addActionListener(printAction);
+        f.add(button, BorderLayout.SOUTH);
+        f.setSize(500, 220);
+        f.setResizable(true);
+        f.setVisible(true);
         } 
        catch (FileNotFoundException ex) {
             //Logger.getLogger(Directory.class.getName()).log(Level.SEVERE, null, ex);
@@ -345,19 +341,45 @@ public class Directory extends javax.swing.JFrame {
     private void searchBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchBtnActionPerformed
         // TODO add your handling code here:
         String searchName = searchBox.getText();
-        try {
-            String value = findAddressByPlace(searchName);
-            //searchResult.setText(value);
-            JOptionPane.showMessageDialog(this,value,"Result",JOptionPane.INFORMATION_MESSAGE);
-        } catch (IOException ex) {
-            //Logger.getLogger(Directory.class.getName()).log(Level.SEVERE, null, ex);
-            JOptionPane.showMessageDialog(this,ex.getMessage(),"Error",JOptionPane.ERROR_MESSAGE);
-        } catch (InvalidFormatException ex) {
-            //Logger.getLogger(Directory.class.getName()).log(Level.SEVERE, null, ex);
-            JOptionPane.showMessageDialog(this,ex.getMessage(),"Error",JOptionPane.ERROR_MESSAGE);
-        }
         
-        searchBox.setText("");
+        HashMap<Integer,ArrayList> st;
+        try {
+            st = findAddressByPlace(searchName);
+            
+            JTable t=new JTable(toTableModel(st));
+            t.setAutoCreateRowSorter(true);
+            JScrollPane scroll = new JScrollPane(t);
+            JFrame f=new JFrame();
+            Label l1 = new Label(searchBox.getText());
+            l1.setFont(new java.awt.Font("Tahoma", 1, 14));
+            f.add(l1,BorderLayout.NORTH);
+            f.add(scroll,BorderLayout.CENTER);
+            JButton button = new JButton("Print");
+            MessageFormat h = new MessageFormat(searchBox.getText());
+            ActionListener printAction = new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    
+                    t.print(JTable.PrintMode.FIT_WIDTH,h, null);
+                    
+                } catch (PrinterException pe) {
+                    JOptionPane.showMessageDialog(Directory.this,pe.getMessage(),"Error",JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            };
+            button.addActionListener(printAction);
+            f.add(button, BorderLayout.SOUTH);
+            f.setResizable(true);
+            f.setSize(500,200);
+            f.setVisible(true);
+            searchBox.setText("");
+            } catch (IOException ex) {
+            //Logger.getLogger(Directory.class.getName()).log(Level.SEVERE, null, ex);
+                JOptionPane.showMessageDialog(this,ex.getMessage(),"Error",JOptionPane.ERROR_MESSAGE);
+            } catch (InvalidFormatException ex) {
+            //Logger.getLogger(Directory.class.getName()).log(Level.SEVERE, null, ex);
+                JOptionPane.showMessageDialog(this,ex.getMessage(),"Error",JOptionPane.ERROR_MESSAGE);
+            }
     }//GEN-LAST:event_searchBtnActionPerformed
 
     private void searchNameBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchNameBoxActionPerformed
@@ -379,6 +401,8 @@ public class Directory extends javax.swing.JFrame {
         }
         
         searchNameBox.setText("");
+        
+        
     }//GEN-LAST:event_searchNameBtnActionPerformed
     
     /**
@@ -418,20 +442,27 @@ public class Directory extends javax.swing.JFrame {
         });
     }
     
-    public static String findAddressByPlace(String nameToSearch) throws IOException, InvalidFormatException {
+    public static HashMap<Integer,ArrayList> findAddressByPlace(String nameToSearch) throws IOException, InvalidFormatException {
         String fileLocation = "D:\\JavaBooks.xlsx";
         XSSFWorkbook wb = new XSSFWorkbook(new File(fileLocation));
         //for (int sheetIndex = 0; sheetIndex < wb.getNumberOfSheets(); sheetIndex++) {
             XSSFSheet sheet = wb.getSheetAt(0);
-            String a="";
-            for (int rowIndex = 0; rowIndex < sheet.getLastRowNum(); rowIndex++) {
+            //String a="";
+            int count=0;
+            HashMap<Integer,ArrayList> hm = new HashMap<Integer,ArrayList>();
+            for (int rowIndex = 0; rowIndex < sheet.getLastRowNum()+1; rowIndex++) {
                 XSSFRow row = sheet.getRow(rowIndex);
+                ArrayList<String> ls = new ArrayList<>();
                 if (row != null && row.getCell(3).getStringCellValue().equals(nameToSearch)) {
-                    a+=row.getCell(1).getStringCellValue()+" "+row.getCell(2).getStringCellValue()+" "+row.getCell(3).getStringCellValue()+"\n";
-                    //a+="\t";
-                }
+                    //a+=row.getCell(1).getStringCellValue()+" "+row.getCell(2).getStringCellValue()+" "+row.getCell(3).getStringCellValue()+"\n";
+                    count++;
+                    ls.add(row.getCell(1).getStringCellValue());
+                    ls.add(row.getCell(2).getStringCellValue());
+                    hm.put(count, ls);
+                    
+                }   
             }
-        return a;
+        return hm;
     }
 
      public static String findAddressByName(String nameToSearch) throws IOException, InvalidFormatException {
@@ -440,26 +471,29 @@ public class Directory extends javax.swing.JFrame {
         //for (int sheetIndex = 0; sheetIndex < wb.getNumberOfSheets(); sheetIndex++) {
             XSSFSheet sheet = wb.getSheetAt(0);
             String a="";
-            for (int rowIndex = 0; rowIndex < sheet.getLastRowNum(); rowIndex++) {
+            for (int rowIndex = 0; rowIndex < sheet.getLastRowNum()+1; rowIndex++) {
                 XSSFRow row = sheet.getRow(rowIndex);
                 if (row != null && row.getCell(1).getStringCellValue().equals(nameToSearch)) {
-                    a+=row.getCell(1).getStringCellValue()+" "+row.getCell(2).getStringCellValue()+" "+row.getCell(3).getStringCellValue()+"\n";
-                    //a+="\t";
+                    a+=row.getCell(1).getStringCellValue()+" "+row.getCell(2).getStringCellValue()+" "+row.getCell(3).getStringCellValue()+"\n";  
+                    //count++;
                 }
             }
+            System.out.print(a);
         return a;
     }
      
-    public void printJavaJFrameJTable() {
-        try {
-            boolean print = table.print();
-            if (!print) {
-                JOptionPane.showMessageDialog(null, "Unable To Print !!..");
-            }
-        } catch (PrinterException ex) {
-            JOptionPane.showMessageDialog(null, ex.getMessage());
+    public static TableModel toTableModel(HashMap<?,?> map) {
+        DefaultTableModel model = new DefaultTableModel(
+         new Object[] { "Serial No.", "Name","Mobile No." }, 0
+        );
+        for (HashMap.Entry<?,?> entry : map.entrySet()) {
+            Integer a = (Integer) entry.getKey();
+            ArrayList<String> ls = (ArrayList<String>) entry.getValue();
+            model.addRow(new Object[] { a, ls.get(0),ls.get(1) });
         }
+    return model;
     }
+    
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton addBTN;
